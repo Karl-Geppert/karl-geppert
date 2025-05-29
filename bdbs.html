@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Billion-Dollar Blind Spot - Retro Gold Rush!</title>
+   <script src="https://cdn.tailwindcss.com"></script>
+   <style>
+       body {
+           font-family: 'Press Start 2P', cursive; /* Default retro font */
+           background: linear-gradient(45deg, #7b00ff, #ff00ff, #00ffff, #ffff00, #ff0000, #ff7f00);
+           background-size: 600% 600%;
+           animation: gradientBG 20s ease infinite;
+           color: #fff;
+           overflow-x: hidden; /* Prevent horizontal scroll from coin animations */
+       }
+
+
+       @keyframes gradientBG {
+           0% { background-position: 0% 50%; }
+           50% { background-position: 100% 50%; }
+           100% { background-position: 0% 50%; }
+       }
+
+
+       .game-container {
+           background-color: rgba(0, 0, 0, 0.75);
+           border: 4px solid #0ff; /* Cyan border */
+           box-shadow: 0 0 20px #0ff, 0 0 30px #f0f inset, 0 0 10px #fff; /* Enhanced Neon glow */
+           position: relative; /* For coin positioning */
+       }
+
+
+       .tile {
+           perspective: 1000px;
+           cursor: pointer;
+           border: 2px solid #aaa;
+           background-color: #2c2c2c;
+       }
+       .tile-inner {
+           position: relative;
+           width: 100%;
+           height: 100%;
+           text-align: center;
+           transition: transform 0.5s; /* Slightly faster spin */
+           transform-style: preserve-3d;
+       }
+       .tile.flipped .tile-inner {
+           transform: rotateY(180deg);
+       }
+       .tile.is-spinning .tile-inner {
+           animation: spinAndReset 0.8s forwards; /* Faster spin for transitions */
+       }
+       @keyframes spinAndReset {
+           0% { transform: rotateY(0deg); }
+           50% { transform: rotateY(180deg); }
+           51% { transform: rotateY(-180deg); }
+           100% { transform: rotateY(0deg); }
+       }
+
+
+       .tile-face {
+           position: absolute;
+           width: 100%;
+           height: 100%;
+           backface-visibility: hidden;
+           display: flex;
+           flex-direction: column;
+           align-items: center;
+           justify-content: center;
+           border-radius: 0.25rem; /* Slightly sharper corners */
+           font-size: 0.55rem; /* Adjusted for Press Start 2P on small tiles */
+           line-height: 1.1;
+           padding: 2px;
+           overflow-wrap: break-word;
+           word-break: break-word;
+           font-family: 'Press Start 2P', cursive; /* Retro font for tiles */
+       }
+        @media (min-width: 400px) { /* Slightly larger text on wider small screens */
+           .tile-face { font-size: 0.6rem; }
+        }
+        @media (min-width: 640px) {
+           .tile-face { font-size: 0.65rem; padding: 3px; }
+        }
+
+
+       .tile-front {
+           background-color: #4a4a4a;
+           color: #eee;
+       }
+       .tile-front.blank {
+           background-color: #3d0752; /* Darker Purple for blank */
+           border: 2px outset #c0f;
+       }
+       .tile-front.blank .phrase-on-front {
+           display: none;
+       }
+
+
+       .tile-back {
+           transform: rotateY(180deg);
+       }
+
+
+       .tile-back.level1 { background-color: #111; color: #FFFFFF; border: 2px solid #555;}
+       .tile-back.level2 { background-color: #005eff; color: #FFFFFF; border: 2px solid #6bb0ff;} /* Vibrant Blue */
+       .tile-back.level3 { background-color: #FFCC00; color: #222222; border: 2px solid #ffeb3b;} /* Vibrant Yellow */
+       .tile-back.level4 { background-color: #00DD00; color: #111111; border: 2px solid #7cff7c;} /* Bright Green */
+       .tile-back.incorrect { background-color: #DD0000; color: #FFFFFF; border: 2px solid #ff6b6b;} /* Vibrant Red */
+
+
+       .tile-back .phrase-on-back { font-size: 0.95em; margin-bottom: 0.1rem; }
+       .tile-back .level-on-back { font-size: 0.8em; font-style: normal; margin-bottom: 0.1rem; text-transform: uppercase;}
+       .tile-back .icon { font-size: 1.6em; line-height: 1; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
+
+
+       #game-board { max-width: 450px; margin-left: auto; margin-right: auto; }
+      
+       .status-text { color: #0ff; text-shadow: 0 0 6px #0ff, 0 0 3px #00c4c4; }
+       .score-text { color: #ff0; text-shadow: 0 0 6px #ff0, 0 0 3px #c4c400; transition: color 0.2s, transform 0.2s; }
+       .found-text { color: #0f0; text-shadow: 0 0 6px #0f0, 0 0 3px #00c400; }
+
+
+       .score-flash-red {
+           animation: flashRed 0.5s ease-out;
+       }
+       @keyframes flashRed {
+           0%, 100% { color: #ff0; transform: scale(1); } /* Original score color */
+           50% { color: #FF0000; transform: scale(1.15); text-shadow: 0 0 8px #FF0000; } /* Red, larger, stronger shadow */
+       }
+
+
+
+
+       .final-score { font-size: 2.5rem; color: #39ff14; text-shadow: 0 0 12px #39ff14, 0 0 25px #39ff14, 0 0 5px #fff; animation: pulse 1.2s infinite; }
+       @keyframes pulse {
+           0% { transform: scale(1); opacity: 0.8; }
+           50% { transform: scale(1.05); opacity: 1; }
+           100% { transform: scale(1); opacity: 0.8; }
+       }
+       .game-button {
+           background-color: #ff007f;
+           color: #fff;
+           border: 3px solid #fff;
+           box-shadow: 0 0 12px #ff007f, 0 0 5px #fff inset;
+           transition: all 0.2s ease;
+           padding: 10px 20px;
+           font-size: 1.1rem;
+       }
+       .game-button:hover {
+           background-color: #fff;
+           color: #ff007f;
+           box-shadow: 0 0 18px #ff007f, 0 0 30px #ff007f, 0 0 8px #f0f inset;
+           transform: scale(1.05);
+       }
+      
+       /* Coin animation */
+       .coin {
+           position: absolute;
+           width: 15px;
+           height: 15px;
+           background-color: #ffd700; /* Gold */
+           border: 1px solid #b8860b; /* Darker gold border */
+           border-radius: 50%;
+           font-size: 10px;
+           font-family: sans-serif; /* Keep coin symbol standard */
+           color: #b8860b;
+           text-align: center;
+           line-height: 13px;
+           box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+           z-index: 100;
+           user-select: none;
+       }
+      
+       #coin-pile-container {
+           width: 120px; /* Wider container for a bigger pile */
+           height: 60px;
+           margin: 10px auto 0;
+           position: relative;
+       }
+       #coin-pile-visual {
+           width: 0px;
+           height: 0px;
+           background: radial-gradient(ellipse at bottom, #f7b733 20%, #fc4a1a 60%, #f7b733 100%);
+           border-top: 3px solid #ffd700;
+           border-left: 2px solid #b8860b;
+           border-right: 2px solid #b8860b;
+           border-radius: 70% 70% 20px 20px / 100% 100% 30px 30px; /* More irregular mound */
+           margin: auto;
+           position: absolute;
+           bottom: 0;
+           left: 50%;
+           transform: translateX(-50%);
+           transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease; /* Bouncier and shadow transition */
+           box-shadow: 0px -5px 10px rgba(255,215,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2), inset 0 -2px 3px rgba(0,0,0,0.2);
+       }
+
+
+
+
+   </style>
+   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-2 sm:p-4">
+
+
+   <div class="game-container p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-lg">
+       <header class="text-center mb-3">
+           <h1 class="text-2xl sm:text-3xl font-bold text-yellow-300">Billion-Dollar Blind Spot</h1>
+       </header>
+
+
+       <div id="status-bar" class="flex flex-col sm:flex-row justify-around items-center mb-3 text-base sm:text-lg">
+           <div id="timer-display" class="status-text font-bold mb-1 sm:mb-0">Time: 04:00</div>
+           <div id="level-display" class="status-text font-bold text-center text-xs sm:text-sm leading-tight px-1">Level 1: The Neighbourhood Kiosk</div>
+       </div>
+      
+       <div id="score-display-container" class="text-center mb-3 text-lg sm:text-xl">
+            <span id="score" class="score-text font-semibold">Score: 0</span>
+            <span id="found-counter" class="found-text font-semibold ml-2 sm:ml-4">Found: 0/10</span>
+       </div>
+
+
+       <div id="game-board" class="grid grid-cols-5 gap-1 sm:gap-1.5 aspect-square mb-3">
+           {/* Tiles will be generated here */}
+       </div>
+      
+       <div id="coin-pile-container">
+           <div id="coin-pile-visual"></div>
+       </div>
+
+
+       <div id="final-score-display" class="text-center my-5 hidden">
+           {/* Final score will be shown here */}
+       </div>
+
+
+       <div class="text-center mt-3">
+           <button id="start-reset-button" class="game-button font-bold">
+               Start Game
+           </button>
+       </div>
+   </div>
+
+
+   <script>
+       const gameWordsConfig = {
+           "LEVEL 1": {
+               name: "The Neighbourhood Kiosk",
+               correctPhrases: [ /* 10 phrases */
+                   { phrase: "Visual Check" }, { phrase: "Manual List" }, { phrase: "Notepad Tally" },
+                   { phrase: "Memory Recall" }, { phrase: "Quick Glance" }, { phrase: "Kiosk Count" },
+                   { phrase: "Shelf Look" }, { phrase: "Daily Check" }, { phrase: "Order Pad" }, { phrase: "Owner's Eye" }
+               ],
+               points: 1
+           },
+           "LEVEL 2": {
+               name: "My High-Street Store",
+               correctPhrases: [ /* 10 phrases */
+                   { phrase: "Store Stock-Take" }, { phrase: "Shelf Count" }, { phrase: "Back Room Check" },
+                   { phrase: "After-Hours Count" }, { phrase: "POS Data Review" }, { phrase: "Periodic Count" },
+                   { phrase: "Staff Count" }, { phrase: "Error Prone Count" }, { phrase: "Costly Count" }, { phrase: "T-Shirt Size Check" }
+               ],
+               points: 2
+           },
+           "LEVEL 3": {
+               name: "The Department Store",
+               correctPhrases: [ /* 10 phrases */
+                   { phrase: "Annual Inventory" }, { phrase: "Dept. Audit" }, { phrase: "Warehouse Check" },
+                   { phrase: "Cycle Counting" }, { phrase: "Sales Reconciliation" }, { phrase: "Damage Adjustment" },
+                   { phrase: "Theft Report" }, { phrase: "Misplaced Pallet" }, { phrase: "Outdated Data" }, { phrase: "Flying Blind" }
+               ],
+               points: 5
+           },
+           "LEVEL 4": {
+               name: "The National Retail Giant",
+               correctPhrases: [ /* 10 phrases */
+                   { phrase: "Robotic Scan" }, { phrase: "Nightly Auto-Inventory" }, { phrase: "Autonomous Scan" },
+                   { phrase: "Daily Robot Count" }, { phrase: "RFID Tracking" }, { phrase: "Real-Time Sync" },
+                   { phrase: "Automated Warehouse" }, { phrase: "AI Forecasting" }, { phrase: "Drone Audit" }, { phrase: "Ghost Inventory Fix" }
+               ],
+               points: 15
+           },
+           incorrectPhrases: [ /* Pool of 30 incorrect phrases for variety */
+               { phrase: "Customer Care" }, { phrase: "Merchandise" }, { phrase: "Sale Event" },
+               { phrase: "Coupon Code" }, { phrase: "Rewards Club" }, { phrase: "Supply Route" },
+               { phrase: "Logistics Co." }, { phrase: "Web Store" }, { phrase: "Shop Window" },
+               { phrase: "Change Rooms" }, { phrase: "Pay Point" }, { phrase: "Online Basket" },
+               { phrase: "Store Map" }, { phrase: "Sales Team" }, { phrase: "Shift Lead" },
+               { phrase: "Till Training" }, { phrase: "Refund Policy" }, { phrase: "Gift Token" },
+               { phrase: "Upsell Skill" }, { phrase: "Cross-sell" }, { phrase: "Display Unit" },
+               { phrase: "Shelf Layout" }, { phrase: "Ad Campaign" }, { phrase: "TV Commercial" },
+               { phrase: "Brand Logo" }, { phrase: "Query Form" }, { phrase: "Order Online" },
+               { phrase: "Temp Store" }, { phrase: "Market Study" }, { phrase: "Buyer Persona" }
+           ],
+           incorrectPoints: -5
+       };
+
+
+       let currentLevel = 1;
+       let score = 0;
+       let timeLeft = 240;
+       let gameTimerInterval;
+       let gameActive = false;
+       const tilesPerRound = 25;
+       const correctTilesPerRound = 10;
+       let correctlyGuessedInLevel = 0;
+       let totalCoinsCollected = 0;
+
+
+       const gameBoard = document.getElementById('game-board');
+       const scoreDisplay = document.getElementById('score');
+       const timerDisplay = document.getElementById('timer-display');
+       const levelDisplay = document.getElementById('level-display');
+       const startResetButton = document.getElementById('start-reset-button');
+       const finalScoreDisplay = document.getElementById('final-score-display');
+       const scoreDisplayContainer = document.getElementById('score-display-container');
+       const foundCounterDisplay = document.getElementById('found-counter');
+       const gameContainer = document.querySelector('.game-container');
+       const coinPileVisual = document.getElementById('coin-pile-visual');
+
+
+       function formatTime(seconds) {
+           const minutes = Math.floor(seconds / 60);
+           const remainingSeconds = seconds % 60;
+           return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+       }
+
+
+       function shuffleArray(array) {
+           for (let i = array.length - 1; i > 0; i--) {
+               const j = Math.floor(Math.random() * (i + 1));
+               [array[i], array[j]] = [array[j], array[i]];
+           }
+           return array;
+       }
+      
+       function createInitialBlankTiles() {
+           gameBoard.innerHTML = '';
+           for (let i = 0; i < tilesPerRound; i++) {
+               const tile = document.createElement('div');
+               tile.classList.add('tile', 'rounded-md', 'shadow-lg');
+               const tileInner = document.createElement('div');
+               tileInner.classList.add('tile-inner');
+               const tileFront = document.createElement('div');
+               tileFront.classList.add('tile-face', 'tile-front', 'blank');
+               const phraseSpan = document.createElement('span');
+               phraseSpan.classList.add('phrase-on-front');
+               tileFront.appendChild(phraseSpan);
+               const tileBack = document.createElement('div');
+               tileBack.classList.add('tile-face', 'tile-back');
+               tileInner.appendChild(tileFront);
+               tileInner.appendChild(tileBack);
+               tile.appendChild(tileInner);
+               gameBoard.appendChild(tile);
+           }
+       }
+      
+       function updateFoundCounter() {
+           foundCounterDisplay.textContent = `Found: ${correctlyGuessedInLevel}/${correctTilesPerRound}`;
+       }
+
+
+       function setupRound() {
+           correctlyGuessedInLevel = 0;
+           updateFoundCounter();
+           const levelConfig = gameWordsConfig[`LEVEL ${currentLevel}`];
+           levelDisplay.textContent = `Level ${currentLevel}: ${levelConfig.name}`;
+          
+           let roundWords = [];
+           const correctWords = shuffleArray([...levelConfig.correctPhrases]).slice(0, correctTilesPerRound).map(word => ({ ...word, isStockMethod: true, points: levelConfig.points, levelNum: currentLevel }));
+           roundWords.push(...correctWords);
+           const incorrectWordsNeeded = tilesPerRound - correctWords.length;
+           const selectedIncorrect = shuffleArray([...gameWordsConfig.incorrectPhrases]).slice(0, incorrectWordsNeeded).map(word => ({ ...word, isStockMethod: false, points: gameWordsConfig.incorrectPoints, levelNum: null }));
+           roundWords.push(...selectedIncorrect);
+           const shuffledRoundWords = shuffleArray(roundWords);
+
+
+           const tiles = gameBoard.querySelectorAll('.tile');
+           tiles.forEach((tile, index) => {
+               const wordData = shuffledRoundWords[index];
+               tile.dataset.wordData = JSON.stringify(wordData);
+               tile.classList.remove('flipped');
+               delete tile.dataset.clickedInRound;
+
+
+               const tileFront = tile.querySelector('.tile-front');
+               const tileBack = tile.querySelector('.tile-back');
+               const phraseSpan = tileFront.querySelector('.phrase-on-front');
+               phraseSpan.textContent = wordData.phrase;
+               tileFront.classList.remove('blank');
+               phraseSpan.style.display = 'inline';
+
+
+               tileBack.innerHTML = '';
+               tileBack.className = 'tile-face tile-back';
+               const phraseOnBack = document.createElement('div');
+               phraseOnBack.classList.add('phrase-on-back');
+               phraseOnBack.textContent = wordData.phrase;
+               tileBack.appendChild(phraseOnBack);
+               const icon = document.createElement('span');
+               icon.classList.add('icon');
+
+
+               if (wordData.isStockMethod) {
+                   tileBack.classList.add(`level${currentLevel}`);
+                   const levelOnBackDisplay = document.createElement('div');
+                   levelOnBackDisplay.classList.add('level-on-back');
+                   levelOnBackDisplay.textContent = `LEVEL ${currentLevel}`;
+                   tileBack.appendChild(levelOnBackDisplay);
+                   icon.textContent = '✔';
+               } else {
+                   tileBack.classList.add('incorrect');
+                   icon.textContent = '✘';
+               }
+               tileBack.appendChild(icon);
+              
+               tile.removeEventListener('click', handleTileClick);
+               tile.addEventListener('click', handleTileClick);
+
+
+               if(gameActive && timeLeft < 240) {
+                   tile.classList.add('is-spinning');
+                   setTimeout(() => tile.classList.remove('is-spinning'), 800);
+               }
+           });
+       }
+
+
+       function animateCoinDrop(tileElement, numCoins) {
+           const tileRect = tileElement.getBoundingClientRect();
+           const containerRect = gameContainer.getBoundingClientRect();
+           const startX = tileRect.left - containerRect.left + tileRect.width / 2;
+           const startY = tileRect.top - containerRect.top + tileRect.height / 2;
+           const pileRect = coinPileVisual.getBoundingClientRect();
+           // Target the top surface of the pile visual for coins to "land" on
+           const endY = pileRect.top - containerRect.top;
+           const endXBase = pileRect.left - containerRect.left + pileRect.width / 2;
+
+
+
+
+           for (let i = 0; i < numCoins; i++) {
+               const coin = document.createElement('div');
+               coin.classList.add('coin');
+               coin.textContent = '$';
+               coin.style.left = `${startX - 7.5}px`;
+               coin.style.top = `${startY - 7.5}px`;
+               gameContainer.appendChild(coin);
+
+
+               const randomOffsetX = (Math.random() - 0.5) * (coinPileVisual.offsetWidth * 0.8 || 20);
+               const finalX = endXBase + randomOffsetX - 7.5;
+               const fallDuration = 0.6 + Math.random() * 0.2; // Vary fall time slightly
+
+
+               setTimeout(() => {
+                   coin.style.transition = `transform ${fallDuration}s cubic-bezier(0.4, 0, 0.8, 1), opacity ${fallDuration * 0.8}s linear ${fallDuration * 0.2}s`;
+                   coin.style.transform = `translate(${finalX - startX}px, ${endY - startY + (Math.random() * 10)}px) rotate(${Math.random() * 720 - 360}deg) scale(0.8)`; // Fall, spin, shrink a bit
+                   coin.style.opacity = '0';
+                   setTimeout(() => coin.remove(), fallDuration * 1000);
+               }, i * 30);
+           }
+           totalCoinsCollected += numCoins;
+           updateCoinPileVisual();
+       }
+      
+       function updateCoinPileVisual() {
+           const baseWidth = 15;
+           const baseHeight = 8;
+           const maxWidth = 100;
+           const maxHeight = 50;
+          
+           let newWidth = Math.min(maxWidth, baseWidth + totalCoinsCollected * 0.8); // More aggressive growth
+           let newHeight = Math.min(maxHeight, baseHeight + totalCoinsCollected * 0.3); // More aggressive growth
+          
+           coinPileVisual.style.width = `${newWidth}px`;
+           coinPileVisual.style.height = `${newHeight}px`;
+           // Update shadow to make it look like it's growing
+           coinPileVisual.style.boxShadow = `0px -${newHeight * 0.2}px ${newHeight * 0.4}px rgba(255,215,0,0.7), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 3px rgba(0,0,0,0.2)`;
+       }
+
+
+
+
+       function handleTileClick(event) {
+           if (!gameActive) return;
+           const tile = event.currentTarget;
+           if (tile.classList.contains('flipped') || tile.dataset.clickedInRound === 'true') return;
+          
+           tile.classList.add('flipped');
+           tile.dataset.clickedInRound = 'true';
+           const wordData = JSON.parse(tile.dataset.wordData);
+           score += wordData.points;
+           updateScoreDisplay();
+
+
+           if (wordData.isStockMethod) {
+               correctlyGuessedInLevel++;
+               updateFoundCounter();
+               animateCoinDrop(tile, wordData.points);
+           } else {
+               // Flash score red for incorrect guess
+               scoreDisplay.classList.add('score-flash-red');
+               setTimeout(() => {
+                   scoreDisplay.classList.remove('score-flash-red');
+               }, 500); // Duration of the flash
+           }
+       }
+
+
+       function updateScoreDisplay() {
+           scoreDisplay.textContent = `Score: ${score}`;
+       }
+
+
+       function advanceLevelOrEndGame() {
+           if (currentLevel < 4) {
+               currentLevel++;
+               setupRound();
+           } else {
+               endGame();
+           }
+       }
+
+
+       function gameLoop() {
+           timeLeft--;
+           timerDisplay.textContent = formatTime(timeLeft);
+           if (timeLeft <= 0) {
+               endGame();
+               return;
+           }
+           if (timeLeft % 60 === 0 && timeLeft !== 240 && timeLeft > 0) {
+               advanceLevelOrEndGame();
+           }
+       }
+      
+       function revealInitialWords() {
+           const tiles = gameBoard.querySelectorAll('.tile');
+           tiles.forEach((tile) => {
+               tile.classList.add('is-spinning');
+               setTimeout(() => tile.classList.remove('is-spinning'), 800);
+           });
+       }
+
+
+       function startGame() {
+           gameActive = true;
+           score = 0;
+           currentLevel = 1;
+           timeLeft = 240;
+           totalCoinsCollected = 0;
+           updateCoinPileVisual();
+          
+           updateScoreDisplay();
+           timerDisplay.textContent = formatTime(timeLeft);
+           finalScoreDisplay.classList.add('hidden');
+           scoreDisplayContainer.classList.remove('hidden');
+           startResetButton.textContent = 'Reset Game';
+          
+           setupRound();
+           revealInitialWords();
+          
+           clearInterval(gameTimerInterval);
+           gameTimerInterval = setInterval(gameLoop, 1000);
+       }
+
+
+       function endGame() {
+           gameActive = false;
+           clearInterval(gameTimerInterval);
+           timerDisplay.textContent = "TIME'S UP!";
+           const tiles = gameBoard.querySelectorAll('.tile');
+           tiles.forEach(tile => {
+               tile.removeEventListener('click', handleTileClick);
+               tile.style.cursor = 'default';
+           });
+           scoreDisplayContainer.classList.add('hidden');
+           foundCounterDisplay.classList.add('hidden');
+           finalScoreDisplay.innerHTML = `<div class="final-score">Final Score: ${score}</div>`;
+           finalScoreDisplay.classList.remove('hidden');
+           startResetButton.textContent = 'Play Again?';
+       }
+
+
+       startResetButton.addEventListener('click', () => {
+           if (!gameActive || timeLeft <= 0) {
+               foundCounterDisplay.classList.remove('hidden');
+               startGame();
+           } else {
+               endGame();
+               foundCounterDisplay.classList.remove('hidden');
+               startGame();
+           }
+       });
+
+
+       document.addEventListener('DOMContentLoaded', () => {
+           timerDisplay.textContent = formatTime(timeLeft);
+           updateScoreDisplay();
+           updateFoundCounter();
+           createInitialBlankTiles();
+       });
+   </script>
+</body>
+</html>
+
+
+
